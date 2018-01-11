@@ -52,3 +52,5 @@ class Command(BaseCommand):
                     tc.closed = True
 
                 tc.save()
+
+        print("Prices updated!")
