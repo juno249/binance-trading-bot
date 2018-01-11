@@ -13,7 +13,7 @@ class Trader(models.Model):
 
 
 class Coin(models.Model):
-	btc_price = models.DecimalField(max_digits=20, decimal_places=8)
+	btc_price = models.DecimalField(max_digits=20, decimal_places=8, null=True, blank=True)
 	symbol = models.CharField(primary_key=True, unique=True, max_length=10)
 	max_qty = models.DecimalField(max_digits=20, decimal_places=8, default=0.00000000)
 	min_qty = models.DecimalField(max_digits=20, decimal_places=8, default=0.00000000)

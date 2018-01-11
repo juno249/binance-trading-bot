@@ -37,6 +37,8 @@ class Command(BaseCommand):
                                                   side='SELL',
                                                   type='MARKET',
                                                   quantity=tc.quantity)
+                    print(order_result)
+                    tc.closed = True
 
                 elif change <= -tc.stop_loss:
                     # Send market SELL order
@@ -46,5 +48,7 @@ class Command(BaseCommand):
                                                   side='SELL',
                                                   type='MARKET',
                                                   quantity=tc.quantity)
+                    print(order_result)
+                    tc.closed = True
 
                 tc.save()
