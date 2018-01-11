@@ -78,7 +78,7 @@ class UpdateTraderBalance(APIView):
         t.save()
         return HttpResponse(asset['free'])
     except BinanceAPIException as e:
-        return HttpResponse(e)
+        return HttpResponse(e, status=400)
 
 
 @method_decorator(login_required, name='dispatch')
@@ -107,6 +107,7 @@ class CreateOrder(APIView):
                                      "<b>{2}</b>. Step size: {3}")\
                                     .format(quantity, coin.symbol, coin.max_qty,
                                                     step_size), status=400)
+
             elif Decimal(quantity) < coin.min_qty:
                 return HttpResponse(("Quantity to low! You have tried to order "
                                      "<b>{0} {1}</b>. Minimum quantity is "
