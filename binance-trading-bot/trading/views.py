@@ -70,12 +70,15 @@ class OpenTradingConditionsAPI(generics.ListAPIView):
 class UpdateTraderBalance(APIView):
    permission_classes = (IsAuthenticated,)
    def get(self, request, format=None):
+    try:
         c = Client(request.user.trader.api_key, request.user.trader.secret)
         asset = c.get_asset_balance(asset='BTC')
         t = get_object_or_404(Trader, user=request.user) 
         t.btc_balance = asset['free']
         t.save()
         return HttpResponse(asset['free'])
+    except BinanceAPIException as e:
+        return HttpResponse(e)
 
 
 @method_decorator(login_required, name='dispatch')
@@ -83,41 +86,34 @@ class CreateOrder(APIView):
     permission_classes = (IsAuthenticated,)
 
     def post(self, request, format=None):
-        c = Client(request.user.trader.api_key, request.user.trader.secret)
-        data = request.data
-        btc_to_spend = data['btc-to-spend']
-        auto_sell = data['auto-sell']
-        stop_loss = data['stop-loss']
-        coin_symbol = data['coin']
-        coin = get_object_or_404(Coin, symbol=coin_symbol)
-        bid_price = c.get_ticker(symbol=coin.symbol)['bidPrice']
-
-        print(coin.btc_price, Decimal(bid_price))
-
-        # Update coin price.
-        if coin.btc_price != Decimal(bid_price):
-            coin.btc_price = Decimal(bid_price)
-            coin.save()
-
-        # Calculate quantity to buy. Slice by step
-        quantity = '%.{}f'.format(coin.step,) % (Decimal(btc_to_spend) / coin.btc_price)
-        step_size = '%.8f' % coin.step_size
-
-        # Check coin order filters.
-        if Decimal(quantity) > coin.max_qty:
-            return HttpResponse(("Quantity to high! You have tried to order "
-                                 "<b>{0} {1}</b>. Maximum quantity is "
-                                 "<b>{2}</b>. Step size: {3}")\
-                                .format(quantity, coin.symbol, coin.max_qty,
-                                                step_size), status=400)
-        elif Decimal(quantity) < coin.min_qty:
-            return HttpResponse(("Quantity to low! You have tried to order "
-                                 "<b>{0} {1}</b>. Minimum quantity is "
-                                 "<b>{2}</b>. Step size: {3}")\
-                                .format(quantity, coin.symbol, coin.min_qty, 
-                                                step_size), status=400)
 
         try:
+            c = Client(request.user.trader.api_key, request.user.trader.secret)
+            data = request.data
+            btc_to_spend = data['btc-to-spend']
+            auto_sell = data['auto-sell']
+            stop_loss = data['stop-loss']
+            coin_symbol = data['coin']
+            coin = get_object_or_404(Coin, symbol=coin_symbol)
+
+            # Calculate quantity to buy. Slice by step
+            quantity = '%.{}f'.format(coin.step,) % (Decimal(btc_to_spend) / coin.btc_price)
+            step_size = '%.8f' % coin.step_size
+
+            # Check coin order filters.
+            if Decimal(quantity) > coin.max_qty:
+                return HttpResponse(("Quantity to high! You have tried to order "
+                                     "<b>{0} {1}</b>. Maximum quantity is "
+                                     "<b>{2}</b>. Step size: {3}")\
+                                    .format(quantity, coin.symbol, coin.max_qty,
+                                                    step_size), status=400)
+            elif Decimal(quantity) < coin.min_qty:
+                return HttpResponse(("Quantity to low! You have tried to order "
+                                     "<b>{0} {1}</b>. Minimum quantity is "
+                                     "<b>{2}</b>. Step size: {3}")\
+                                    .format(quantity, coin.symbol, coin.min_qty, 
+                                                    step_size), status=400)
+
             order_result = c.create_order(symbol=coin_symbol,
                                           side='BUY',
                                           type='MARKET',
