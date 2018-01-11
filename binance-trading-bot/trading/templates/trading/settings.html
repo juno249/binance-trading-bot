@@ -1,0 +1,10 @@
+{% extends 'trading/base.html' %}
+{% load static bootstrap_forms %}
+{% block content %}
+<h4>Trader setttings</h4>
+<form method="POST">
+	{% csrf_token %}
+	{{ settings_form|as_bootstrap }}
+	<input type="submit" class="btn btn-primary btn-block" value="Save">
+</form>
+{% endblock content %}
