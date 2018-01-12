@@ -20,7 +20,7 @@ class Command(BaseCommand):
             coin.btc_price = asset['price']
             coin.save()
 
-            trading_orders = TradingCondition.objects.filter(coin=coin)
+            trading_orders = TradingCondition.objects.filter(closed=False, coin=coin)
             for tc in trading_orders:
 
                 # Calculate price change in percentage. IF AutoSell or StopLoss

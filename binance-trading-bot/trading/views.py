@@ -67,6 +67,7 @@ class OpenTradingConditionsAPI(generics.ListAPIView):
     def get_queryset(self):
         return TradingCondition.objects.filter(trader=self.request.user.trader, closed=False)
 
+
 @method_decorator(login_required, name='dispatch')
 class UpdateTraderBalance(APIView):
    permission_classes = (IsAuthenticated,)
