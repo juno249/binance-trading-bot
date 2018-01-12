@@ -4,3 +4,4 @@ env3/
 db.sqlite3
 db.sqlite3-journal
 binance-trading-bot/assets
+settings_secret.py
