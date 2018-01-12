@@ -98,8 +98,11 @@ class CreateOrder(APIView):
             coin = get_object_or_404(Coin, symbol=coin_symbol)
 
             # Calculate quantity to buy. Slice by step
-            quantity = '%.{}f'.format(coin.step,) % (Decimal(btc_to_spend) / coin.btc_price)
-            step_size = '%.8f' % coin.step_size
+            if coin.step == 0:
+                quantity = int(Decimal(btc_to_spend) / coin.btc_price)
+            else:
+                quantity = '%.{}f'.format(coin.step,) % (Decimal(btc_to_spend) / coin.btc_price)
+                step_size = '%.8f' % coin.step_size
 
             # Check coin order filters.
             if Decimal(quantity) > coin.max_qty:
@@ -122,7 +125,7 @@ class CreateOrder(APIView):
                                           quantity=quantity)
             print(order_result)
 
-        except BinanceAPIException as e:
+        except IndexError as e:
             return HttpResponse(e, status=400)
 
         tc = TradingCondition.objects.create(trader=request.user.trader,

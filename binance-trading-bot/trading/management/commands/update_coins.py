@@ -29,5 +29,11 @@ class Command(BaseCommand):
 			coin.max_qty = lot_filter['maxQty']
 			coin.min_qty = lot_filter['minQty']
 			coin.step_size = lot_filter['stepSize']
-			coin.step = len(lot_filter['stepSize'].split(".")[1].split("1")[0])+1
+			step_split = lot_filter['stepSize'].split(".")
+
+			if step_split[0] == '1':
+				coin.step = 0
+			else:
+				coin.step = len(step_split[1].split("1")[0])+1
+
 			coin.save()
