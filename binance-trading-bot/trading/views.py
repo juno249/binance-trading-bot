@@ -62,9 +62,10 @@ class CoinsAPI(generics.ListAPIView):
 
 @method_decorator(login_required, name='dispatch')
 class OpenTradingConditionsAPI(generics.ListAPIView):
-    queryset = TradingCondition.objects.filter(closed=False)
     serializer_class = TradingConditionSerializer
 
+    def get_queryset(self):
+        return TradingCondition.objects.filter(trader=self.request.user.trader, closed=False)
 
 @method_decorator(login_required, name='dispatch')
 class UpdateTraderBalance(APIView):
