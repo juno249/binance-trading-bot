@@ -12,7 +12,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         print("Price updates!")
-        t = Trader.objects.get()
+        t = Trader.objects.all()[0]
         c = Client(t.api_key, t.secret)
         assets = c.get_all_tickers()
         for asset in assets:
@@ -32,7 +32,7 @@ class Command(BaseCommand):
                 if change >= tc.auto_sell:
                     # Send market SELL order
                     print("AUTO SELL!", coin.symbol, tc.btc_buy_price, tc.coin.btc_price, change)
-
+                    c = Client(tc.trader.api_key, tc.trader.secret)
                     order_result = c.create_order(symbol=coin.symbol,
                                                   side='SELL',
                                                   type='MARKET',
@@ -43,7 +43,7 @@ class Command(BaseCommand):
                 elif change <= -tc.stop_loss:
                     # Send market SELL order
                     print("STOP LOSS!", coin.symbol, tc.btc_buy_price, tc.coin.btc_price, change)
-
+                    c = Client(tc.trader.api_key, tc.trader.secret)
                     order_result = c.create_order(symbol=coin.symbol,
                                                   side='SELL',
                                                   type='MARKET',

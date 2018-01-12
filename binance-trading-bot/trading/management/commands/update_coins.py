@@ -11,7 +11,7 @@ from binance.client import Client
 class Command(BaseCommand):
 
 	def handle(self, *args, **options):
-		t = Trader.objects.get()
+		t = Trader.objects.all()[0]
 		c = Client(t.api_key, t.secret)
 
 		assets = c.get_all_tickers()
