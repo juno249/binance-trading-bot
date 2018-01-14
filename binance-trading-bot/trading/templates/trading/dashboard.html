@@ -23,12 +23,12 @@
 
             <div class="form-group">
               <label for="auto-sell">Auto Sell (%)</label>
-              <input value="0" min="0" type="number" name="auto-sell" class="form-control">
+              <input value="1" min="1" type="number" name="auto-sell" class="form-control">
             </div>
 
             <div class="form-group">
               <label for="stop-loss">Stop Loss (%)</label>
-              <input value="0" min="0" type="number" name="stop-loss" class="form-control">
+              <input value="1" min="1" type="number" name="stop-loss" class="form-control">
             </div>
 
             <div class="form-group">
@@ -59,28 +59,16 @@
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.3/js/bootstrap.min.js" integrity="sha384-a5N7Y/aK3qNeh15eJKGWxsqtnX/wWdSZSKp+81YjTmS15nvnvxKHuzaWwXHDli+4" crossorigin="anonymous"></script>
 
 <script>
+
   var msg_box = $("#error-box");
   var REFRESH_SECONDS = 10;
 
-  Selectize.define('enter_key_submit', function (options) {
-    var self = this
-
-    this.onKeyDown = (function (e) {
-      var original = self.onKeyDown
-      return function (e) {
-        if (e.keyCode === 13 && this.$control_input.val() != '') {
-          self.trigger('submit')
-          e.preventDefault()
-        }
-        return original.apply(this, arguments)
-      }
-    })()
-  })
-
+  // Calculate precise float 8 decimal places.
   function precise(elem) {
     elem.value = Number(elem.value).toFixed(8);
   }
 
+  // Update trader balance
   function update_balance() {
     $.ajax({
       url: '/api/balance/',
@@ -97,11 +85,9 @@
     })
   }
 
+  // Get coins for auto-complete
   function load_function(query, callback) {
-    // Get list of objects by calling API. Url for request is 
-    // generated from input name field.
     $.ajax({
-      // Wyszukaj nazwę dla modelu w api.
       url: '/api/'+$(this)[0]['$input'][0]['name']+'/?format=json',
       type: 'GET',
       dataType: 'json',
@@ -119,16 +105,23 @@
 
   $(document).ready(function() {
 
+    // Initialize.
     update_balance();
-    // BTC amount percentage buttons.
+    get_transaction_conditions();
+
+    // setInterval(function() {
+    //   get_transaction_conditions();
+    // }, 1000*REFRESH_SECONDS)
+
+    // Order form percentage buttons functionality.
     $('.btc-calc-btn').on('click', function() {
       balance = $("#btc_balance").text();
       calculated = (Number(balance) * Number($(this)[0].dataset['percent'])).toFixed(8);
       $("input[name='btc-to-spend']").val(calculated);
     });
 
-
-    function get_orders() {
+    // Get all transaction conditions.
+    function get_transaction_conditions() {
       $.ajax({
         url: '/api/tc/open/?format=json',
         type: 'GET',
@@ -151,52 +144,59 @@
               direction = 'danger'
             }
 
-          ele = $('<div class="col-md-6">'+
-            '<div class="card bg-light mb-3">'+
-              '<div class="card-header">'+tc.coin+'</div>'+
-              '<div class="card-body text-primary" style="padding-top:0.75rem;">'+
-                '<div class="text-right float-right">'+
-                  '<small>Change</small>'+
-                  '<h4 class="card-title"><span class="text-'+direction+'">'+tc.change+'%</span></h4>'+
+            ele = $('<div class="symbol-'+tc.coin+' col-md-6">'+
+              '<div class="card bg-light mb-3">'+
+                '<div class="card-header">'+tc.coin+'</div>'+
+                '<div class="card-body text-primary" style="padding-top:0.75rem;">'+
+                  '<div class="text-right float-right">'+
+                    '<small>Change</small>'+
+                    '<h4 class="card-title"><span class="change-percent text-'+direction+'">'+tc.change+'%</span></h4>'+
+                  '</div>'+
+                  '<small>Current price</small>'+
+                  '<h4 class="current-price card-title" style="margin-bottom:0;">'+tc.btc_buy_price+'</h4>'+
+                  '<small>BOUGHT @ <span class="btc-price">'+tc.btc_buy_price+'</span></small>'+
+                  '<p style="margin-bottom:0">&nbsp;</p>'+
+                  '<div style="padding-top:2rem;position:absolute;bottom:1rem;">'+
+                  '<small class="text-muted">BTC: '+tc.btc_amount+' | Sell: '+tc.auto_sell+'% | Loss: '+tc.stop_loss+'%</small></div>'+
                 '</div>'+
-                '<small>Current price</small>'+
-                '<h4 class="card-title" style="margin-bottom:0;">'+tc.price+'</h4>'+
-                '<small>BOUGHT @ '+tc.btc_buy_price+'</small>'+
-                '<p style="margin-bottom:0">&nbsp;</p>'+
-                '<div style="padding-top:2rem;position:absolute;bottom:1rem;">'+
-                '<small class="text-muted">Qty: '+tc.quantity+' | Sell: '+tc.auto_sell+'% | Loss: '+tc.stop_loss+'%</small></div>'+
               '</div>'+
-            '</div>'+
-          '</div>')
-          tc_container.append(ele);
+            '</div>')
+            tc_container.append(ele);
+
           });
         }
       })
     }
 
-    // Run main refresh loops.
-    setInterval(function() {
-      get_orders();
-    }, 1000*REFRESH_SECONDS)
 
-    // Initially fetch transaction conditions.
-    get_orders();
+    ////////// ORDER FORM ////////////////////////////
+    // Submit order form on ENTER (when coin selectize focused).
+    Selectize.define('enter_key_submit', function (options) {
+      var self = this
+      this.onKeyDown = (function (e) {
+        var original = self.onKeyDown
+        return function (e) {
+          if (e.keyCode === 13 && this.$control_input.val() != '') {
+            self.trigger('submit')
+            e.preventDefault()
+          }
+          return original.apply(this, arguments)
+        }
+      })()
+    })
 
-    // Coin autocomplete.
     $('.singleinputautocomplete').selectize({
       maxItems: 1,
       labelField: 'text',
       valueField: 'value',
       persist: true,
       preload: true,
-
       render: {
         option: function (item, escape) {
           return '<div>' + item.text + '</div>';
         }
       },
       load: load_function,
-
       plugins: ['enter_key_submit'],
 
       onInitialize: function (foo) {
@@ -215,8 +215,7 @@
           '<b>Order successfully placed</b><br/>'+
         '</div>');
         update_balance();
-        get_orders();
-        console.log(res);
+        get_transaction_conditions();
         msg_box.append(msg);
       },
       error: function (res) {
@@ -226,6 +225,38 @@
         msg_box.append(err)
       }
     });
+
+    ////////// ORDER FORM END ////////////////////////////
+
+    socket = new WebSocket("ws://" + window.location.host + "/");
+    if (socket.readyState == WebSocket.OPEN) socket.onopen(); 
+
+    socket.onmessage = function(e) {
+      json = JSON.parse(e.data);
+      console.log(json);
+      for (var key in json) {
+        if (json.hasOwnProperty(key)) {
+          coin_div = $(".symbol-"+key);
+          current_price = json[key]['p']
+          coin_div.find(".current-price").text(current_price)
+          change = json[key]['change']
+          change_percent = coin_div.find(".change-percent")
+          change_percent.text(change+"%")
+          if (change >= 0) {
+            change_percent.addClass("text-success")
+            change_percent.removeClass("text-danger")
+          } else {
+            change_percent.addClass("text-danger")
+            change_percent.removeClass("text-success")
+          }
+        }
+      }
+    }
+
+    socket.onopen = function(e) {
+      console.log("Socket opened.")
+    }
+
   })
 
 </script>

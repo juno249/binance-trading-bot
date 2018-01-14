@@ -11,9 +11,7 @@ from binance.client import Client
 class Command(BaseCommand):
 
     def handle(self, *args, **options):
-        print("Price updates!")
-        t = Trader.objects.all()[0]
-        c = Client(t.api_key, t.secret)
+        c = Client(settings.BINANCE_API_KEY, settings.BINANCE_SECRET)
         assets = c.get_all_tickers()
         for asset in assets:
             coin, crt = Coin.objects.get_or_create(symbol=asset['symbol'])

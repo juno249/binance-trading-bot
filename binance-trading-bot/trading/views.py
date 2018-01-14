@@ -13,10 +13,20 @@ from rest_framework.permissions import IsAuthenticated
 
 from binance.client import Client
 from binance.exceptions import BinanceAPIException
+from binance.websockets import BinanceSocketManager
 
 from .models import Coin, TradingCondition, Trader
 from .forms import CoinForm, TraderSettingsForm
 from .serializers import CoinSerializer, TradingConditionSerializer
+
+from pymongo import MongoClient
+
+
+client = MongoClient()
+db = client['binance']
+watched_coins = db.watched_coins
+options = db.options
+prices = db.prices
 
 
 @method_decorator(login_required, name='dispatch')
@@ -96,6 +106,9 @@ class CreateOrder(APIView):
             auto_sell = data['auto-sell']
             stop_loss = data['stop-loss']
             coin_symbol = data['coin']
+
+            print("Order : {}".format(coin_symbol,))
+
             coin = get_object_or_404(Coin, symbol=coin_symbol)
 
             # Calculate quantity to buy. Slice by step
@@ -120,23 +133,26 @@ class CreateOrder(APIView):
                                     .format(quantity, coin.symbol, coin.min_qty, 
                                                     step_size), status=400)
 
+            ### PLACE ORDER ###
             order_result = c.create_order(symbol=coin_symbol,
                                           side='BUY',
                                           type='MARKET',
                                           quantity=quantity)
-            print(order_result)
+            print('Order placed')
+            price = c.get_ticker(symbol=coin_symbol)['askPrice']
 
-        except IndexError as e:
+        except BinanceAPIException as e:
             return HttpResponse(e, status=400)
 
         tc = TradingCondition.objects.create(trader=request.user.trader,
-                                             btc_buy_price=coin.btc_price,
+                                             btc_buy_price=price,
                                              auto_sell=auto_sell,
                                              stop_loss=stop_loss,
                                              coin=coin,
                                              quantity=quantity,
                                              btc_amount=btc_to_spend)
 
+        options.find_one_and_update({"option": "watched"}, { '$push': {"coins": {"tc": tc.pk, "s": coin.symbol, "buy": str(price), "stop": stop_loss, "sell": auto_sell}}}, upsert=True)
         return HttpResponse(tc)
 
 

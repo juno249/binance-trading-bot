@@ -17,11 +17,22 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'trading',
     'bootstrap',
-    'rest_framework'
+    'rest_framework',
+    'channels'
 ]
 
 REST_FRAMEWORK = {
     'DATETIME_FORMAT': "%Y-%m-%d %H:%M:%S",
+}
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "asgi_redis.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("localhost", 6379)],
+        },
+        "ROUTING": "trading.routing.channel_routing",
+    },
 }
 
 MIDDLEWARE = [

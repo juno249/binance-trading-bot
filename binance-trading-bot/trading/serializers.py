@@ -17,4 +17,4 @@ class TradingConditionSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = TradingCondition
 		fields = ['btc_amount', 'quantity', 'auto_sell', 'stop_loss', 'coin', 'btc_buy_price',
-				  'change', 'closed', 'earnings', 'price', 'time_created']
+				  'change', 'closed', 'earnings', 'price', 'time_created', 'id']
