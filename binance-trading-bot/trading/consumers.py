@@ -33,22 +33,26 @@ def ws_prices(message):
     watched_coins = options.find_one({"option": "watched"})['coins']
     for coin in watched_coins:
         tc = TradingCondition.objects.get(pk=int(coin['tc']))
-        c = next((item for item in d if item["s"] == coin['s']))
-        prices.find_one_and_update({"coin": c['s']}, {"$set": {"p": str(c['c'])}}, upsert=True)
-        current_price = Decimal(c['c'])
-        buy_price = Decimal(coin['buy'])
-        change = round((current_price - buy_price) / buy_price * 100, 2)
-        if change <= -int(coin['stop']) or change >= int(coin['sell']):
-            client = Client(tc.trader.api_key, tc.trader.secret)
-            order_result = client.create_order(symbol=coin['s'],
-                                                    side='SELL',
-                                                    type='MARKET',
-                                                    quantity=tc.quantity)
-            print(order_result)
-            tc.closed = True
-            tc.save()
-            options.find_one_and_update({"option": "watched"}, { "$pull": {"coins": {"s": coin['s']}}})
+        try:
+            c = next((item for item in d if item["s"] == coin['s']))
+            prices.find_one_and_update({"coin": c['s']}, {"$set": {"p": str(c['c'])}}, upsert=True)
+            current_price = Decimal(c['c'])
+            buy_price = Decimal(coin['buy'])
+            change = round((current_price - buy_price) / buy_price * 100, 2)
+            if change <= -int(coin['stop']) or change >= int(coin['sell']):
+                client = Client(tc.trader.api_key, tc.trader.secret)
+                order_result = client.create_order(symbol=coin['s'],
+                                                        side='SELL',
+                                                        type='MARKET',
+                                                        quantity=tc.quantity)
+                print(order_result)
+                tc.closed = True
+                tc.save()
+                options.find_one_and_update({"option": "watched"}, { "$pull": {"coins": {"s": coin['s']}}})
 
-        payload[c['s']] = {"p": str(c['c']), "change": str(change)}
+            payload[c['s']] = {"p": str(c['c']), "change": str(change)}
+
+        except StopIteration:
+            pass
 
     Group("coins").send({"text": json.dumps(payload)})
