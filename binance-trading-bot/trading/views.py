@@ -142,14 +142,14 @@ class CreateOrder(APIView):
             return HttpResponse(e, status=400)
 
         tc = TradingCondition.objects.create(trader=request.user.trader,
-                                             btc_buy_price=price,
+                                             btc_buy_price=btc_price,
                                              auto_sell=auto_sell,
                                              stop_loss=stop_loss,
                                              coin=coin,
                                              quantity=quantity,
                                              btc_amount=btc_to_spend)
 
-        options.find_one_and_update({"option": "watched"}, { '$push': {"coins": {"tc": tc.pk, "s": coin.symbol, "buy": str(price), "stop": stop_loss, "sell": auto_sell}}}, upsert=True)
+        options.find_one_and_update({"option": "watched"}, { '$push': {"coins": {"tc": tc.pk, "s": coin.symbol, "buy": str(btc_price), "stop": stop_loss, "sell": auto_sell}}}, upsert=True)
         return HttpResponse(tc)
 
 
