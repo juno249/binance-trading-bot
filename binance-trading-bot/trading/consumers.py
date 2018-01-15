@@ -45,6 +45,10 @@ def ws_prices(message):
                                                     type='MARKET',
                                                     quantity=tc.quantity)
             print(order_result)
+            tc.closed = True
+            tc.save()
+            options.find_one_and_update({"option": "watched"}, { "$pull": {"coins": {"s": coin['s']}}})
+
         payload[c['s']] = {"p": str(c['c']), "change": str(change)}
 
     Group("coins").send({"text": json.dumps(payload)})

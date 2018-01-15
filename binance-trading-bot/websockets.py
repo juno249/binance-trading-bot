@@ -17,4 +17,5 @@ def process_message(payload):
 bm = BinanceSocketManager(c)
 bm.start_ticker_socket(process_message)
 bm.start()
+
 print("Websocket prices updates.")

@@ -106,16 +106,15 @@ class CreateOrder(APIView):
             auto_sell = data['auto-sell']
             stop_loss = data['stop-loss']
             coin_symbol = data['coin']
-
-            print("Order : {}".format(coin_symbol,))
-
             coin = get_object_or_404(Coin, symbol=coin_symbol)
 
-            # Calculate quantity to buy. Slice by step
+            # Calculate quantity to buy. Slice by step.
+            btc_price = Decimal(c.get_ticker(symbol=coin_symbol)['askPrice'])
+
             if coin.step == 0:
-                quantity = int(Decimal(btc_to_spend) / coin.btc_price)
+                quantity = int(Decimal(btc_to_spend) / btc_price)
             else:
-                quantity = '%.{}f'.format(coin.step,) % (Decimal(btc_to_spend) / coin.btc_price)
+                quantity = '%.{}f'.format(coin.step,) % (Decimal(btc_to_spend) / btc_price)
                 step_size = '%.8f' % coin.step_size
 
             # Check coin order filters.
@@ -138,8 +137,6 @@ class CreateOrder(APIView):
                                           side='BUY',
                                           type='MARKET',
                                           quantity=quantity)
-            print('Order placed')
-            price = c.get_ticker(symbol=coin_symbol)['askPrice']
 
         except BinanceAPIException as e:
             return HttpResponse(e, status=400)
