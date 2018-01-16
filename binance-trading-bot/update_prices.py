@@ -18,8 +18,8 @@ c = Client(settings.BINANCE_API_KEY, settings.BINANCE_SECRET)
 
 def process_message(payload):
 	for coin in payload:
-		prices.find_one_and_update({"s": coin['s']}, {"$set": {"c": str(coin['c'])}}, upsert=True)
-	print("[{}] Prices added.".format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+		prices.find_one_and_update({"s": coin['s']}, {"$set": 
+										  {"c": str(coin['c'])}}, upsert=True)
 
 bm = BinanceSocketManager(c)
 bm.start_ticker_socket(process_message)
