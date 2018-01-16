@@ -83,7 +83,7 @@ class UpdateTraderBalance(APIView):
    permission_classes = (IsAuthenticated,)
    def get(self, request, format=None):
     try:
-        c = Client(request.user.trader.api_key, request.user.trader.secret)
+        c = binance_client
         asset = c.get_asset_balance(asset='BTC')
         t = get_object_or_404(Trader, user=request.user) 
         t.btc_balance = asset['free']
