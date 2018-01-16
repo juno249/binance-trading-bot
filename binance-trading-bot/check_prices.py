@@ -43,8 +43,10 @@ while True:
                                                   type='MARKET',
                                                   quantity=coin_watched['q'])
                 print(o_r)
+
             except BinanceAPIException as e:
-                print(coin_watched, e)
+                print(binance_client.get_account())
+                print(e, coin_watched)
         else:
             payload[int(coin_watched['tc'])] = [current_price, str(change)]
 
