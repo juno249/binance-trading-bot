@@ -1,3 +1,4 @@
+import datetime
 from decimal import Decimal
 from django.conf import settings
 from django.shortcuts import render, get_object_or_404
@@ -24,10 +25,9 @@ from pymongo import MongoClient
 
 client = MongoClient()
 db = client['binance']
-watched_coins = db.watched_coins
-options = db.options
+watched = db.watched
 prices = db.prices
-
+binance_client = Client(settings.BINANCE_API_KEY, settings.BINANCE_SECRET)
 
 @method_decorator(login_required, name='dispatch')
 class Dashboard(TemplateView):
@@ -98,59 +98,65 @@ class CreateOrder(APIView):
     permission_classes = (IsAuthenticated,)
 
     def post(self, request, format=None):
-
+        seconds = 0
+        start_time = datetime.datetime.now()
         try:
-            c = Client(request.user.trader.api_key, request.user.trader.secret)
             data = request.data
-            btc_to_spend = data['btc-to-spend']
+            btc_to_spend = Decimal(data['btc-to-spend'])
             auto_sell = data['auto-sell']
             stop_loss = data['stop-loss']
             coin_symbol = data['coin']
             coin = get_object_or_404(Coin, symbol=coin_symbol)
 
-            # Calculate quantity to buy. Slice by step.
-            btc_price = Decimal(c.get_ticker(symbol=coin_symbol)['askPrice'])
+            btc_price = Decimal(prices.find_one({"s": coin_symbol})['c'])
 
+            # Check if only can buy whole coin, otherwise teremine decimal place
             if coin.step == 0:
-                quantity = int(Decimal(btc_to_spend) / btc_price)
+                quantity = int(btc_to_spend / btc_price)
             else:
-                quantity = '%.{}f'.format(coin.step,) % (Decimal(btc_to_spend) / btc_price)
-                step_size = '%.8f' % coin.step_size
+                quantity = Decimal('%.{}f'.format(coin.step,) % (btc_to_spend / btc_price))
 
-            # Check coin order filters.
-            if Decimal(quantity) > coin.max_qty:
+
+            print("Order: {} :: {} @ {} BTC".format(coin_symbol, quantity, btc_price))
+
+            # Check coin order quantity filters.
+            if quantity > coin.max_qty:
                 return HttpResponse(("Quantity to high! You have tried to order "
                                      "<b>{0} {1}</b>. Maximum quantity is "
                                      "<b>{2}</b>. Step size: {3}")\
                                     .format(quantity, coin.symbol, coin.max_qty,
-                                                    step_size), status=400)
+                                                    '%.8f' % coin.step_size), status=400)
 
-            elif Decimal(quantity) < coin.min_qty:
+            elif quantity < coin.min_qty:
                 return HttpResponse(("Quantity to low! You have tried to order "
                                      "<b>{0} {1}</b>. Minimum quantity is "
                                      "<b>{2}</b>. Step size: {3}")\
                                     .format(quantity, coin.symbol, coin.min_qty, 
-                                                    step_size), status=400)
+                                                    '%.8f' % coin.step_size), status=400)
 
             ### PLACE ORDER ###
-            order_result = c.create_order(symbol=coin_symbol,
+            order_result = binance_client.create_order(symbol=coin_symbol,
                                           side='BUY',
                                           type='MARKET',
                                           quantity=quantity)
+            print(order_result)
+            seconds = (datetime.datetime.now()-start_time).total_seconds()
+
+            tc = TradingCondition.objects.create(trader=request.user.trader,
+                                                 btc_buy_price=btc_price,
+                                                 auto_sell=auto_sell,
+                                                 stop_loss=stop_loss,
+                                                 coin=coin,
+                                                 quantity=quantity,
+                                                 btc_amount=btc_to_spend)
+
+            watched.insert({"tc": tc.pk, "s": coin.symbol, "q": str(quantity), "buy": str(btc_price), "stop": stop_loss, "sell": auto_sell, "change": 0.00})
 
         except BinanceAPIException as e:
             return HttpResponse(e, status=400)
 
-        tc = TradingCondition.objects.create(trader=request.user.trader,
-                                             btc_buy_price=btc_price,
-                                             auto_sell=auto_sell,
-                                             stop_loss=stop_loss,
-                                             coin=coin,
-                                             quantity=quantity,
-                                             btc_amount=btc_to_spend)
-
-        options.find_one_and_update({"option": "watched"}, { '$push': {"coins": {"tc": tc.pk, "s": coin.symbol, "buy": str(btc_price), "stop": stop_loss, "sell": auto_sell}}}, upsert=True)
-        return HttpResponse(tc)
+        else:
+            return HttpResponse(seconds)
 
 
 @method_decorator(login_required, name='dispatch')

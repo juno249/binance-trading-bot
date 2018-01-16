@@ -144,7 +144,7 @@
               direction = 'danger'
             }
 
-            ele = $('<div class="symbol-'+tc.coin+' col-md-6">'+
+            ele = $('<div class="tc-'+tc.id+' col-md-6">'+
               '<div class="card bg-light mb-3">'+
                 '<div class="card-header">'+tc.coin+'</div>'+
                 '<div class="card-body text-primary" style="padding-top:0.75rem;">'+
@@ -211,8 +211,7 @@
       success: function (res) {
         msg = $('<div class="alert alert-dismissible alert-success">'+
           '<button type="button" class="close" data-dismiss="alert">&times;</button>'+
-          '<b>Order successfully placed</b><br/>'+
-        '</div>');
+          'Order successfully placed in <b>'+res+'</b> seconds</div>');
         update_balance();
         get_transaction_conditions();
         msg_box.append(msg);
@@ -235,18 +234,23 @@
       console.log(json);
       for (var key in json) {
         if (json.hasOwnProperty(key)) {
-          coin_div = $(".symbol-"+key);
-          current_price = json[key]['p']
-          coin_div.find(".current-price").text(current_price)
-          change = json[key]['change']
-          change_percent = coin_div.find(".change-percent")
-          change_percent.text(change+"%")
-          if (change >= 0) {
-            change_percent.addClass("text-success")
-            change_percent.removeClass("text-danger")
+          coin_div = $(".tc-"+key);
+          current_price = json[key][0]
+          console.log(current_price);
+          if (current_price == "SOLD") {
+            coin_div.remove();
           } else {
-            change_percent.addClass("text-danger")
-            change_percent.removeClass("text-success")
+            coin_div.find(".current-price").text(current_price)
+            change = json[key][1]
+            change_percent = coin_div.find(".change-percent")
+            change_percent.text(change+"%")
+            if (change >= 0) {
+              change_percent.addClass("text-success")
+              change_percent.removeClass("text-danger")
+            } else {
+              change_percent.addClass("text-danger")
+              change_percent.removeClass("text-success")
+            }
           }
         }
       }
