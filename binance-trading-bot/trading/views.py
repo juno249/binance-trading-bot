@@ -107,26 +107,24 @@ class CreateOrder(APIView):
             stop_loss = data['stop-loss']
             coin_symbol = data['coin']
             coin = get_object_or_404(Coin, symbol=coin_symbol)
-
             btc_price = Decimal(prices.find_one({"s": coin_symbol})['c'])
 
-            # Check if only can buy whole coin, otherwise teremine decimal place
+            # Set coin step
             if coin.step == 0:
                 quantity = int(btc_to_spend / btc_price)
             else:
                 quantity = Decimal('%.{}f'.format(coin.step,) % (btc_to_spend / btc_price))
 
-
             print("Order: {} :: {} @ {} BTC".format(coin_symbol, quantity, btc_price))
 
-            # Check coin order quantity filters.
+            # Too much coins to buy!
             if quantity > coin.max_qty:
                 return HttpResponse(("Quantity to high! You have tried to order "
                                      "<b>{0} {1}</b>. Maximum quantity is "
                                      "<b>{2}</b>. Step size: {3}")\
                                     .format(quantity, coin.symbol, coin.max_qty,
                                                     '%.8f' % coin.step_size), status=400)
-
+            # Too little coins to buy!
             elif quantity < coin.min_qty:
                 return HttpResponse(("Quantity to low! You have tried to order "
                                      "<b>{0} {1}</b>. Minimum quantity is "
@@ -140,7 +138,12 @@ class CreateOrder(APIView):
                                           type='MARKET',
                                           quantity=quantity)
             print(order_result)
-            seconds = (datetime.datetime.now()-start_time).total_seconds()
+
+            try:
+                quantity = binance_client.get_asset_balance(
+                        asset='{}'.format(coin_symbol.replace('BTC', '')))['free']
+            except:
+                pass
 
             tc = TradingCondition.objects.create(trader=request.user.trader,
                                                  btc_buy_price=btc_price,
@@ -150,12 +153,16 @@ class CreateOrder(APIView):
                                                  quantity=quantity,
                                                  btc_amount=btc_to_spend)
 
-            watched.insert({"tc": tc.pk, "s": coin.symbol, "q": str(quantity), "buy": str(btc_price), "stop": stop_loss, "sell": auto_sell, "change": 0.00})
+            # Insert order into watched collection
+            watched.insert({"tc": tc.pk, "s": coin.symbol, "q": str(quantity), "buy": str(btc_price), 
+                                    "stop": stop_loss, "sell": auto_sell, "change": 0.00})
 
         except BinanceAPIException as e:
             return HttpResponse(e, status=400)
 
         else:
+            # Calculate order time
+            seconds = (datetime.datetime.now()-start_time).total_seconds()
             return HttpResponse(seconds)
 
 
