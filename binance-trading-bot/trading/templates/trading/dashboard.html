@@ -169,20 +169,10 @@
     }
 
     ////////// ORDER FORM ////////////////////////////
-    // Submit order form on ENTER (when coin selectize focused).
-    Selectize.define('enter_key_submit', function (options) {
-      var self = this
-      this.onKeyDown = (function (e) {
-        var original = self.onKeyDown
-        return function (e) {
-          if (e.keyCode === 13 && this.$control_input.val() != '') {
-            self.trigger('submit')
-            e.preventDefault()
-          }
-          return original.apply(this, arguments)
-        }
-      })()
-    })
+
+    $('#id_coin').on('change', function(e) {
+      $("#order_form").submit();
+    });
 
     $('.singleinputautocomplete').selectize({
       maxItems: 1,
@@ -196,13 +186,6 @@
         }
       },
       load: load_function,
-      plugins: ['enter_key_submit'],
-
-      onInitialize: function (foo) {
-        this.on('submit', function () {
-          this.$input.closest('form').submit()
-        }, this)
-      }
     });
 
     $("#order_form").ajaxForm({
