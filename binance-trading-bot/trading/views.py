@@ -1,3 +1,4 @@
+import json
 import datetime
 from decimal import Decimal
 from django.conf import settings
@@ -67,7 +68,7 @@ class LogoutView(TemplateView):
 @method_decorator(login_required, name='dispatch')
 class CoinsAPI(generics.ListAPIView):
     serializer_class = CoinSerializer
-    
+
     def get_queryset(self):
         queryset = Coin.objects.all()
         market = self.request.query_params.get('market', None)
@@ -97,10 +98,10 @@ class UpdateTraderBalance(APIView):
         t.btc_balance = asset_btc['free']
         t.eth_balance = asset_eth['free']
         t.save()
-        return HttpResponse({"BTC": asset_btc['free'], "ETH": asset_eth['free']})
+        return HttpResponse(json.dumps({"BTC": asset_btc['free'], "ETH": asset_eth['free']}))
     except BinanceAPIException as e:
         return HttpResponse(e, status=400)
-    except DoesNotExist:
+    except Trader.DoesNotExist:
         raise Http404
 
 

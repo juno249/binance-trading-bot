@@ -92,7 +92,9 @@
         msg_box.append(err)
       },
       success: function (res) {
-        $("#btc_balance").text(res);
+        console.log(res);
+        $("#btc_balance").text(JSON.parse(res)['BTC']);
+        $("#eth_balance").text(JSON.parse(res)['ETH']);
       }
     })
   }
