@@ -4,19 +4,31 @@
   <div class="row">
     <div class="col-lg-4">
       <div class="card text-white bg-dark mb-3" >
-        <div class="card-header"><b>BTC Balance</b>: <span id="btc_balance">{{ trader.btc_balance }}</span></div>
+        <div class="card-header">
+          <b>BTC Balance</b>: <span id="btc_balance">{{ trader.btc_balance }}</span><br/>
+          <b>ETH Balance</b>: <span id="eth_balance">{{ trader.eth_balance }}</span>
+        </div>
         <div class="card-body">
           <form id="order_form" method="POST" action="{% url 'create-order' %}">
             {% csrf_token %}
             <div class="form-group">
-              <label for="btc-to-spend">BTC to spend</label>
-              <input oninput='precise(this)' value="0.00000001" min="0.00000001" type="number" step="0.00000001" name="btc-to-spend" class="form-control">
+              <div class="container-fluid" style="margin-bottom:0.5rem;">
+                <div class="row">
+                  <div class="col-sm-12 p-0">
+                    Choosen market: <span id="choosen_market">BTC</span>
+                  </div>
+                  <div class="col-sm-6 p-0"><div data-market="BTC" class="btc-choose-market btn btn-sm btn-block btn-warning rounded-0">BTC</div></div>
+                  <div class="col-sm-6 p-0"><div data-market="ETH" class="btc-choose-market btn btn-sm btn-block btn-warning rounded-0">ETH</div></div>
+                </div>
+              </div>
+              <label for="amount-to-spend">Amount to spend</label>
+              <input oninput='precise(this)' value="0.00000001" min="0.00000001" type="number" step="0.00000001" name="amount-to-spend" class="form-control">
               <div class="container-fluid" style="margin-top:0.5rem;">
                 <div class="row">
-                  <div class="col-sm-3 p-0"><div data-percent="0.25" class="btc-calc-btn btn btn-sm btn-block btn-primary rounded-0">25%</div></div>
-                  <div class="col-sm-3 p-0"><div data-percent="0.5" class="btc-calc-btn btn btn-sm btn-block btn-primary rounded-0">50%</div></div>
-                  <div class="col-sm-3 p-0"><div data-percent="0.75" class="btc-calc-btn btn btn-sm btn-block btn-primary rounded-0">75%</div></div>
-                  <div class="col-sm-3 p-0"><div data-percent="1" class="btc-calc-btn btn btn-sm btn-block btn-primary rounded-0">100%</div></div>
+                  <div class="col-sm-3 p-0"><div data-percent="0.25" class="market-calc-btn btn btn-sm btn-block btn-primary rounded-0">25%</div></div>
+                  <div class="col-sm-3 p-0"><div data-percent="0.5" class="market-calc-btn btn btn-sm btn-block btn-primary rounded-0">50%</div></div>
+                  <div class="col-sm-3 p-0"><div data-percent="0.75" class="market-calc-btn btn btn-sm btn-block btn-primary rounded-0">75%</div></div>
+                  <div class="col-sm-3 p-0"><div data-percent="1" class="market-calc-btn btn btn-sm btn-block btn-primary rounded-0">100%</div></div>
                 </div>
               </div>
             </div>
@@ -59,7 +71,7 @@
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.3/js/bootstrap.min.js" integrity="sha384-a5N7Y/aK3qNeh15eJKGWxsqtnX/wWdSZSKp+81YjTmS15nvnvxKHuzaWwXHDli+4" crossorigin="anonymous"></script>
 
 <script>
-
+  var choosen_market = "BTC";
   var msg_box = $("#error-box");
   var REFRESH_SECONDS = 10;
 
@@ -88,7 +100,7 @@
   // Get coins for auto-complete
   function load_function(query, callback) {
     $.ajax({
-      url: '/api/'+$(this)[0]['$input'][0]['name']+'/?format=json',
+      url: '/api/'+$(this)[0]['$input'][0]['name']+'/?format=json&market='+choosen_market,
       type: 'GET',
       dataType: 'json',
       error: function (res) {
@@ -98,6 +110,7 @@
         msg_box.append(err)
       },
       success: function (res) {
+        $(".singleinputautocomplete")[0].selectize.clearOptions();
         callback(res);
       }
     });
@@ -113,11 +126,20 @@
     //   get_transaction_conditions();
     // }, 1000*REFRESH_SECONDS)
 
+    // Change market
+    $('.btc-choose-market').on('click', function() {
+      var m = $(this)[0].dataset['market']
+      choosen_market = m;
+      $('#choosen_market').text(m);
+      $("input[name='amount-to-spend']").val("0.00000001");
+      $(".singleinputautocomplete")[0].selectize.onSearchChange("blabla"); 
+    });
+
     // Order form percentage buttons functionality.
-    $('.btc-calc-btn').on('click', function() {
-      balance = $("#btc_balance").text();
+    $('.market-calc-btn').on('click', function() {
+      balance = $("#"+choosen_market.toLowerCase()+"_balance").text();
       calculated = (Number(balance) * Number($(this)[0].dataset['percent'])).toFixed(8);
-      $("input[name='btc-to-spend']").val(calculated);
+      $("input[name='amount-to-spend']").val(calculated);
     });
 
     // Get all transaction conditions.

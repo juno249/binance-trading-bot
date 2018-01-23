@@ -2,7 +2,7 @@ import datetime
 from decimal import Decimal
 from django.conf import settings
 from django.shortcuts import render, get_object_or_404
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect, Http404
 from django.urls import reverse_lazy
 from django.views.generic import TemplateView
 from django.utils.decorators import method_decorator
@@ -27,7 +27,7 @@ client = MongoClient()
 db = client['binance']
 watched = db.watched
 prices = db.prices
-binance_client = Client(settings.BINANCE_API_KEY, settings.BINANCE_SECRET)
+
 
 @method_decorator(login_required, name='dispatch')
 class Dashboard(TemplateView):
@@ -39,13 +39,6 @@ class Dashboard(TemplateView):
         context['tradingconditions'] = TradingCondition.objects.all()
         context['trader'] = get_object_or_404(Trader, user=self.request.user)
         return context
-
-
-@method_decorator(login_required, name='dispatch')
-class LogoutView(TemplateView):
-    def get(self, request):
-        logout(request)
-        return HttpResponseRedirect(settings.LOGIN_URL)
 
 
 class LoginView(TemplateView):
@@ -65,9 +58,22 @@ class LoginView(TemplateView):
 
 
 @method_decorator(login_required, name='dispatch')
+class LogoutView(TemplateView):
+    def get(self, request):
+        logout(request)
+        return HttpResponseRedirect(settings.LOGIN_URL)
+
+
+@method_decorator(login_required, name='dispatch')
 class CoinsAPI(generics.ListAPIView):
-    queryset = Coin.objects.all()
     serializer_class = CoinSerializer
+    
+    def get_queryset(self):
+        queryset = Coin.objects.all()
+        market = self.request.query_params.get('market', None)
+        if market is not None:
+            queryset = queryset.filter(symbol__endswith=market)
+        return queryset
 
 
 @method_decorator(login_required, name='dispatch')
@@ -83,14 +89,19 @@ class UpdateTraderBalance(APIView):
    permission_classes = (IsAuthenticated,)
    def get(self, request, format=None):
     try:
+        binance_client = Client(request.user.trader.api_key, request.user.trader.secret)
         c = binance_client
-        asset = c.get_asset_balance(asset='BTC')
+        asset_btc = c.get_asset_balance(asset='BTC')
+        asset_eth = c.get_asset_balance(asset='ETH')
         t = get_object_or_404(Trader, user=request.user) 
-        t.btc_balance = asset['free']
+        t.btc_balance = asset_btc['free']
+        t.eth_balance = asset_eth['free']
         t.save()
-        return HttpResponse(asset['free'])
+        return HttpResponse({"BTC": asset_btc['free'], "ETH": asset_eth['free']})
     except BinanceAPIException as e:
         return HttpResponse(e, status=400)
+    except DoesNotExist:
+        raise Http404
 
 
 @method_decorator(login_required, name='dispatch')
@@ -102,7 +113,7 @@ class CreateOrder(APIView):
         start_time = datetime.datetime.now()
         try:
             data = request.data
-            btc_to_spend = Decimal(data['btc-to-spend'])
+            btc_to_spend = Decimal(data['amount-to-spend'])
             auto_sell = data['auto-sell']
             stop_loss = data['stop-loss']
             coin_symbol = data['coin']
@@ -115,7 +126,7 @@ class CreateOrder(APIView):
             else:
                 quantity = Decimal('%.{}f'.format(coin.step,) % (btc_to_spend / btc_price))
 
-            print("Order: {} :: {} @ {} BTC".format(coin_symbol, quantity, btc_price))
+            print("Order: {} :: {} @ {}".format(coin_symbol, quantity, btc_price))
 
             # Too much coins to buy!
             if quantity > coin.max_qty:
@@ -133,12 +144,14 @@ class CreateOrder(APIView):
                                                     '%.8f' % coin.step_size), status=400)
 
             ### PLACE ORDER ###
+            binance_client = Client(request.user.trader.api_key, request.user.trader.secret)
             order_result = binance_client.create_order(symbol=coin_symbol,
                                           side='BUY',
                                           type='MARKET',
                                           quantity=quantity)
             print(order_result)
 
+            # Check asset quantity.
             try:
                 quantity = binance_client.get_asset_balance(
                         asset='{}'.format(coin_symbol.replace('BTC', '')))['free']

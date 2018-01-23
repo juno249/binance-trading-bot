@@ -1,12 +1,18 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+MARKETS_LIST = (
+	('BTC', "BTC"),
+	('ETH', "ETH")
+)
+
 
 class Trader(models.Model):
 	user = models.OneToOneField(User, on_delete=models.CASCADE)
 	api_key = models.CharField(max_length=64)
 	secret = models.CharField(max_length=64)
 	btc_balance = models.DecimalField(max_digits=20, decimal_places=8, default=0.00000000)
+	eth_balance = models.DecimalField(max_digits=20, decimal_places=8, default=0.00000000)
 
 	def __unicode__(self):
 		return self.user.username
@@ -26,6 +32,7 @@ class Coin(models.Model):
 
 class TradingCondition(models.Model):
 	trader = models.ForeignKey(Trader, on_delete=models.CASCADE)
+	market = models.CharField(max_length=3, choices=MARKETS_LIST)
 	time_created = models.DateTimeField(auto_now_add=True)
 	auto_sell = models.PositiveIntegerField(default=0)
 	stop_loss = models.PositiveIntegerField(default=0)
