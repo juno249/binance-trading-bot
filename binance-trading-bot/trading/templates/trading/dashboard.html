@@ -92,7 +92,6 @@
         msg_box.append(err)
       },
       success: function (res) {
-        console.log(res);
         $("#btc_balance").text(JSON.parse(res)['BTC']);
         $("#eth_balance").text(JSON.parse(res)['ETH']);
       }
@@ -243,7 +242,6 @@
         if (json.hasOwnProperty(key)) {
           coin_div = $(".tc-"+key);
           current_price = json[key][0]
-          console.log(current_price);
           if (current_price == "SOLD") {
             coin_div.remove();
           } else {

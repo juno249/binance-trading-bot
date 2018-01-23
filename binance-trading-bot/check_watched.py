@@ -45,11 +45,14 @@ while True:
                 print(o_r)
 
             except BinanceAPIException as e:
-                print("SELL ERROR")
-                print(binance_client.get_account())
+                print(binance_client.get_account()['balance'])
                 print(e, coin_watched)
         else:
             payload[int(coin_watched['tc'])] = [current_price, str(change)]
 
-    channel_layer.send("prices", {"text": json.dumps(payload)})
+    # Don't send empty payload.
+    if payload != {}:
+        channel_layer.send("prices", {"text": json.dumps(payload)})
+
+    # Wait some time
     time.sleep(0.5)

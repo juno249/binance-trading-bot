@@ -28,6 +28,7 @@ client = MongoClient()
 db = client['binance']
 watched = db.watched
 prices = db.prices
+binance_client = Client(settings.BINANCE_API_KEY, settings.BINANCE_SECRET)
 
 
 @method_decorator(login_required, name='dispatch')
@@ -90,7 +91,6 @@ class UpdateTraderBalance(APIView):
    permission_classes = (IsAuthenticated,)
    def get(self, request, format=None):
     try:
-        binance_client = Client(request.user.trader.api_key, request.user.trader.secret)
         c = binance_client
         asset_btc = c.get_asset_balance(asset='BTC')
         asset_eth = c.get_asset_balance(asset='ETH')
@@ -145,7 +145,6 @@ class CreateOrder(APIView):
                                                     '%.8f' % coin.step_size), status=400)
 
             ### PLACE ORDER ###
-            binance_client = Client(request.user.trader.api_key, request.user.trader.secret)
             order_result = binance_client.create_order(symbol=coin_symbol,
                                           side='BUY',
                                           type='MARKET',
@@ -155,9 +154,9 @@ class CreateOrder(APIView):
             # Check asset quantity.
             try:
                 quantity = binance_client.get_asset_balance(
-                        asset='{}'.format(coin_symbol.replace('BTC', '')))['free']
-            except:
-                pass
+                        asset='{}'.format(coin_symbol.replace('BTC', '').replace('ETH', '')))['free']
+            except Exception as e:
+                print(e)
 
             tc = TradingCondition.objects.create(trader=request.user.trader,
                                                  btc_buy_price=btc_price,
